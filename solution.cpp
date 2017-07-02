@@ -1,6 +1,7 @@
 #define NULL 0
-#define TRIE_NODE 62
-#define MAX 100
+#define MAX_NODE 62
+#define MAX_RECORD 50000
+#define MAX_SAME 100
 #define STR_LEN 20
 #define FEILD_NUMBER 5
 enum FEILD
@@ -20,7 +21,7 @@ struct Result
 
 struct Record
 {
-	char str[FEILD_NUMBER][STR_LEN]
+	char str[FEILD_NUMBER][STR_LEN];
 };
 
 void strcpy(char* dest, char* src)
@@ -77,14 +78,14 @@ public:
 		strcpy(get(index, field), newStr);
 	};
 public:
-	Record data[MAX];
+	Record data[MAX_RECORD];
 	int count;
 };
 
 class List
 {
 public:
-	int node[MAX];   //保存记录id
+	int node[MAX_SAME];   //保存记录id
 	int count;
 public:
 	List() :count(0) {};
@@ -110,31 +111,29 @@ public:
 		int index = Get(data);
 		if (index != -1)
 		{
-			for (int i = index; i < count - 1; i++)
-			{
-				node[i] = node[i + 1];
-			}
+			node[index] = node[count-1];
 			count--;
 		}
 	};
 	int Get(int data)
 	{
-		int retIndex = -1;
+		int Index = -1;
 		for (int i = 0; i < count; i++)
 		{
 			if (data == node[i])
 			{
-				retIndex = i;
+				Index = i;
+				break;
 			}
 		}
-		return retIndex;
+		return Index;
 	};
 };
 
 struct TrieNode
 {
 	bool isStr;
-	TrieNode* next[TRIE_NODE];
+	TrieNode* next[MAX_NODE];
 	List* list;  //单词对应的记录集合
 	TrieNode() :isStr(false),list(NULL) { for (int i = 0; i < MAX; i++) next[i] = NULL; };
 };
