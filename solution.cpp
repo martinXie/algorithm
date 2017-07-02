@@ -135,7 +135,7 @@ struct TrieNode
 	bool isStr;
 	TrieNode* next[MAX_NODE];
 	List* list;  //单词对应的记录集合
-	TrieNode() :isStr(false),list(NULL) { for (int i = 0; i < MAX; i++) next[i] = NULL; };
+	TrieNode() :isStr(false),list(NULL) { for (int i = 0; i < MAX_NODE; i++) next[i] = NULL; };
 };
 
 class Trie
@@ -147,7 +147,7 @@ public:
 	~Trie() { Free(root); };
 	void Free(TrieNode* p)
 	{
-		for (int i = 0; i < MAX; i++)
+		for (int i = 0; i < MAX_NODE; i++)
 		{
 			if (p->next[i] != NULL)
 			{
