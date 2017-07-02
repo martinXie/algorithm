@@ -1,4 +1,5 @@
-
+#define NULL 0
+#define TRIE_NODE 62
 #define MAX 100
 #define LEN 20
 enum FEILD
@@ -64,7 +65,7 @@ public:
 	};
 	char* get(int id, FEILD field)
 	{
-		char* str = nullptr;
+		char* str = NULL;
 		switch (field)
 		{
 		case NAME:
@@ -133,9 +134,9 @@ public:
 struct TrieNode
 {
 	bool isStr;
-	TrieNode* next[MAX];
+	TrieNode* next[TRIE_NODE];
 	List* list;  //单词对应的记录集合
-	TrieNode() :isStr(false) { for (int i = 0; i < MAX; i++) next[i] = nullptr; };
+	TrieNode() :isStr(false),list(NULL) { for (int i = 0; i < MAX; i++) next[i] = NULL; };
 };
 
 class Trie
@@ -149,7 +150,7 @@ public:
 	{
 		for (int i = 0; i < MAX; i++)
 		{
-			if (p->next[i] != nullptr)
+			if (p->next[i] != NULL)
 			{
 				Free(p->next[i]);
 			}
@@ -160,42 +161,48 @@ public:
 	void Insert(const char* str, int record_id) // str,id都已存在；str存在id不同；str不存在，id不存在；
 	{
 		TrieNode* p = root;
-		while (p != nullptr && *str != '\0')
+		while (*str != '\0')
 		{
-			if (p->next[*str - 'a'] == nullptr)
+			int index = m_GetIndex(*str);
+			if (p->next[index] == NULL)
 			{
 				TrieNode* tmp = new TrieNode();
-				p->next[*str - 'a'] = tmp;
+				p->next[index] = tmp;
 			}
-			p = p->next[*str - 'a'];
+			p = p->next[index];
 			str++;
 		}
-		p->list.Add(record_id);
 		p->isStr = true;
+		if (p->list == NULL)
+		{
+			p->list = new List;
+		}
+		p->list->Add(record_id);
 	};
 	TrieNode* Search(char* str)
 	{
 		TrieNode* p = root;
-		while (p != nullptr && *str != '\0')
+		while (p != NULL && *str != '\0')
 		{
-			p = p->next[*str - 'a'];
+			int index = m_GetIndex(*str);
+			p = p->next[index];
 			str++;
 		}
-		if (p != nullptr && p->isStr == true)
+		if (p != NULL && p->isStr == true)
 		{
 			return p;
 		}
-		return nullptr;
+		return NULL;
 	};
 	void Change(char* str, char* newStr)
 	{
 		TrieNode*p = Search(str);
-		if (p != nullptr)  //先增新，后删旧
+		if (p != NULL)  //先增新，后删旧
 		{
-			int count = p->list.count;
+			int count = p->list->count;
 			for (int i = 0; i < count; i++)
 			{
-				Insert(newStr, p->list.node[i]);
+				Insert(newStr, p->list->node[i]);
 			}
 			DeleteAll(str);
 		}
@@ -203,10 +210,10 @@ public:
 	void Delete(char* str, int id)
 	{
 		TrieNode* p = Search(str);
-		if (p != nullptr)
+		if (p != NULL)
 		{
-			p->list.Delete(id);
-			if (p->list.count == 0)
+			p->list->Delete(id);
+			if (p->list->count == 0)
 			{
 				p->isStr = false;
 			}
@@ -215,13 +222,32 @@ public:
 	void DeleteAll(char* str)
 	{
 		TrieNode* p = Search(str);
-		if (p != nullptr)
+		if (p != NULL)
 		{
 			p->isStr = false;
-			p->list.count = 0;
+			p->list->count = 0;
 		}
 	};
-
+private:
+	int m_GetIndex(char c)
+	{
+		if (c >= 'a' && c <= 'z')
+		{
+			return c - 'a';
+		}
+		else if (c >= 'A'&& c <= 'Z')
+		{
+			return c - 'A' + 26;
+		}
+		else if (c >= '0'&& c <= '9')
+		{
+			return c - '0' + 52;
+		}
+		else
+		{
+			return 0;
+		}
+	};
 };
 
 class DataBase
@@ -237,12 +263,12 @@ public:
 	{
 		Result result = { 0 };
 		TrieNode*p = trie[field].Search(str);
-		if (p != nullptr)
+		if (p != NULL)
 		{
-			result.number = p->list.count;
+			result.number = p->list->count;
 			if (result.number == 1)
 			{
-				int index = p->list.node[0];
+				int index = p->list->node[0];
 				strcpy(result.str, db.get(index, returnField));
 			}
 		}
@@ -254,13 +280,13 @@ public:
 		if (field == changeField)
 		{
 			TrieNode*p = trie[field].Search(str);
-			if (p != nullptr)  //先增新，后删旧
+			if (p != NULL)  //先增新，后删旧
 			{
-				count = p->list.count;
+				count = p->list->count;
 				for (int i = 0; i < count; i++)
 				{
-					trie[changeField].Insert(changStr, p->list.node[i]);
-					db.update(p->list.node[i], changeField, changStr);
+					trie[changeField].Insert(changStr, p->list->node[i]);
+					db.update(p->list->node[i], changeField, changStr);
 				}
 				trie[field].DeleteAll(str);
 			}
@@ -269,11 +295,11 @@ public:
 		else
 		{
 			TrieNode*p = trie[field].Search(str);
-			if (p != nullptr)
+			if (p != NULL)
 			{
-				for (int i = 0; i < p->list.count; i++)
+				for (int i = 0; i < p->list->count; i++)
 				{
-					int index = p->list.node[i];
+					int index = p->list->node[i];
 					if (strcmp(changStr, db.get(index, changeField)) != 0) //记录的对应字段已经是changestr不处理,先删旧后增新
 					{
 						trie[changeField].Delete(db.get(index, changeField), index);
@@ -290,8 +316,8 @@ public:
 	int Delete(FEILD field, char* str)
 	{
 		TrieNode*p = trie[field].Search(str);
-		int count = p->list.count;
-		if (p != nullptr)
+		int count = p->list->count;
+		if (p != NULL)
 		{
 			trie[field].DeleteAll(str);
 		}
@@ -302,11 +328,11 @@ public:
 	Vector db;
 };
 
-DataBase* contact = nullptr;
+DataBase* contact = NULL;
 
 void initial(void )
 {
-	if (contact != nullptr)
+	if (contact != NULL)
 	{
 		delete contact;
 	}
