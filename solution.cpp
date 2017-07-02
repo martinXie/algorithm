@@ -134,7 +134,7 @@ struct TrieNode
 {
 	bool isStr;
 	TrieNode* next[MAX];
-	List list;  //单词对应的记录集合
+	List* list;  //单词对应的记录集合
 	TrieNode() :isStr(false) { for (int i = 0; i < MAX; i++) next[i] = nullptr; };
 };
 
