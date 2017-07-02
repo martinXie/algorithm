@@ -1,23 +1,26 @@
 #define NULL 0
 #define TRIE_NODE 62
 #define MAX 100
-#define LEN 20
+#define STR_LEN 20
+#define FEILD_NUMBER 5
 enum FEILD
 {
 	NAME,
-	BIRTHDAY
+	BIRTHDAY,
+	NUMBER,
+	EMAIL,
+	MEMO
 };
 
 struct Result
 {
 	int number;
-	char str[LEN];
+	char str[STR_LEN];
 };
 
 struct Record
 {
-	char name[LEN];
-	char birthday[LEN];
+	char str[FEILD_NUMBER][STR_LEN]
 };
 
 void strcpy(char* dest, char* src)
@@ -55,29 +58,19 @@ int strcmp(char* a, char* b)
 class Vector //只添加，不删除
 {
 public:
-	Vector() :count(0), currentRecordId(0) {};
-	void push_back(char* name, char* birthday)
+	Vector() :count(0){};
+	void add(char* name, char* birthday, char* number, char* email, char* memo)
 	{
-		currentRecordId = count;
-		strcpy(data[count].birthday, birthday);
-		strcpy(data[count].name, name);
+		strcpy(data[count].str[BIRTHDAY], birthday);
+		strcpy(data[count].str[NAME], name);
+		strcpy(data[count].str[NUMBER], number);
+		strcpy(data[count].str[EMAIL], email);
+		strcpy(data[count].str[MEMO], memo);
 		count++;
 	};
 	char* get(int id, FEILD field)
 	{
-		char* str = NULL;
-		switch (field)
-		{
-		case NAME:
-			str = data[id].name;
-			break;
-		case BIRTHDAY:
-			str = data[id].birthday;
-			break;
-		default:
-			break;
-		}
-		return str;
+		return data[id].str[field];
 	};
 	void update(int index, FEILD field, char* newStr)
 	{
@@ -85,7 +78,6 @@ public:
 	};
 public:
 	Record data[MAX];
-	int currentRecordId;
 	int count;
 };
 
@@ -96,6 +88,14 @@ public:
 	int count;
 public:
 	List() :count(0) {};
+	List(List* p) 
+	{ 
+		count = p->count; 
+		for (int i = 0; i < count; i++)
+		{
+			node[i] = p->node[i];
+		}
+	}
 	void Add(int data) // 不存在，则添加；存在，则忽略
 	{
 		int index = Get(data);
@@ -200,11 +200,12 @@ public:
 		if (p != NULL)  //先增新，后删旧
 		{
 			int count = p->list->count;
+			List list(p->list);
 			for (int i = 0; i < count; i++)
 			{
-				Insert(newStr, p->list->node[i]);
+				Insert(newStr, list.node[i]);
+				Delete(str, list.node[i]);
 			}
-			DeleteAll(str);
 		}
 	};
 	void Delete(char* str, int id)
@@ -217,15 +218,6 @@ public:
 			{
 				p->isStr = false;
 			}
-		}
-	};
-	void DeleteAll(char* str)
-	{
-		TrieNode* p = Search(str);
-		if (p != NULL)
-		{
-			p->isStr = false;
-			p->list->count = 0;
 		}
 	};
 private:
@@ -253,11 +245,14 @@ private:
 class DataBase
 {
 public:
-	void Add(char* name, char* birthday)
+	void Add(char* name, char* birthday, char* number, char* email, char* memo)
 	{
-		db.push_back(name, birthday);
-		trie[NAME].Insert(name, db.currentRecordId);
-		trie[BIRTHDAY].Insert(birthday, db.currentRecordId);
+		trie[NAME].Insert(name, db.count);
+		trie[BIRTHDAY].Insert(birthday, db.count);
+		trie[NUMBER].Insert(number, db.count);
+		trie[EMAIL].Insert(email, db.count);
+		trie[MEMO].Insert(memo, db.count);
+		db.add(name, birthday, number, email, memo);
 	};
 	Result Search(FEILD field, char* str, FEILD returnField)
 	{
@@ -274,57 +269,46 @@ public:
 		}
 		return result;
 	};
-	int Change(FEILD field, char* str, FEILD changeField, char* changStr) // field == changeField; field != changeField;
+	int Change(FEILD field, char* str, FEILD changeField, char* changStr)
 	{
 		int count = 0;
-		if (field == changeField)
+		TrieNode*p = trie[field].Search(str);
+		if (p != NULL)
 		{
-			TrieNode*p = trie[field].Search(str);
-			if (p != NULL)  //先增新，后删旧
+			count = p->list->count;
+			List list(p->list);
+			for (int i = 0; i < count; i++)
 			{
-				count = p->list->count;
-				for (int i = 0; i < count; i++)
+				int index = list.node[i];
+				char* oldStr = db.get(index, changeField);
+				if (strcmp(changStr, oldStr) != 0) //记录的对应字段已经是changestr不处理,先删旧后增新
 				{
-					trie[changeField].Insert(changStr, p->list->node[i]);
-					db.update(p->list->node[i], changeField, changStr);
-				}
-				trie[field].DeleteAll(str);
-			}
-
-		}
-		else
-		{
-			TrieNode*p = trie[field].Search(str);
-			if (p != NULL)
-			{
-				for (int i = 0; i < p->list->count; i++)
-				{
-					int index = p->list->node[i];
-					if (strcmp(changStr, db.get(index, changeField)) != 0) //记录的对应字段已经是changestr不处理,先删旧后增新
-					{
-						trie[changeField].Delete(db.get(index, changeField), index);
-						trie[changeField].Insert(changStr, index);
-						db.update(index, changeField, changStr);
-						count++;
-					}
+					trie[changeField].Delete(oldStr, index);
+					trie[changeField].Insert(changStr, index);
+					db.update(index, changeField, changStr);
 				}
 			}
-
 		}
 		return count;
 	}
 	int Delete(FEILD field, char* str)
 	{
+		int count = 0;
 		TrieNode*p = trie[field].Search(str);
-		int count = p->list->count;
 		if (p != NULL)
 		{
-			trie[field].DeleteAll(str);
+			count = p->list->count;
+			List list(p->list);
+			for (int i = 0; i < count; i++)
+			{
+				int index = list.node[i];
+				trie[field].Delete(str, index);
+			}
 		}
 		return count;
 	};
 public:
-	Trie trie[MAX];
+	Trie trie[FEILD_NUMBER];
 	Vector db;
 };
 
