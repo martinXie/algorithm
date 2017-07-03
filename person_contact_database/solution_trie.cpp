@@ -56,7 +56,7 @@ int strcmp(char* a, char* b)
 	return 1;
 }
 
-class Vector //Ö»Ìí¼Ó£¬²»É¾³ı
+class Vector //åªæ·»åŠ ï¼Œä¸åˆ é™¤
 {
 public:
 	Vector() :count(0){};
@@ -85,7 +85,7 @@ public:
 class List
 {
 public:
-	int node[MAX_SAME];   //±£´æ¼ÇÂ¼id
+	int node[MAX_SAME];   //ä¿å­˜è®°å½•id
 	int count;
 public:
 	List() :count(0) {};
@@ -97,13 +97,13 @@ public:
 			node[i] = p->node[i];
 		}
 	}
-	void Add(int data) // ²»´æÔÚ£¬ÔòÌí¼Ó£»´æÔÚ£¬ÔòºöÂÔ
+	void Add(int data) // ä¸å­˜åœ¨ï¼Œåˆ™æ·»åŠ ï¼›å­˜åœ¨ï¼Œåˆ™å¿½ç•¥
 	{
 		int index = Get(data);
 		if (index == -1)
 		{
 			node[count] = data;
-			count++; //¿ÉÄÜÔ½½ç
+			count++; //å¯èƒ½è¶Šç•Œ
 		}
 	};
 	void Delete(int data)
@@ -134,7 +134,7 @@ struct TrieNode
 {
 	bool isStr;
 	TrieNode* next[MAX_NODE];
-	List* list;  //µ¥´Ê¶ÔÓ¦µÄ¼ÇÂ¼¼¯ºÏ
+	List* list;  //å•è¯å¯¹åº”çš„è®°å½•é›†åˆ
 	TrieNode() :isStr(false),list(NULL) { for (int i = 0; i < MAX_NODE; i++) next[i] = NULL; };
 };
 
@@ -157,7 +157,7 @@ public:
 		delete p;
 
 	};
-	void Insert(const char* str, int record_id) // str,id¶¼ÒÑ´æÔÚ£»str´æÔÚid²»Í¬£»str²»´æÔÚ£¬id²»´æÔÚ£»
+	void Insert(const char* str, int record_id) // str,idéƒ½å·²å­˜åœ¨ï¼›strå­˜åœ¨idä¸åŒï¼›strä¸å­˜åœ¨ï¼Œidä¸å­˜åœ¨ï¼›
 	{
 		TrieNode* p = root;
 		while (*str != '\0')
@@ -196,7 +196,7 @@ public:
 	void Change(char* str, char* newStr)
 	{
 		TrieNode*p = Search(str);
-		if (p != NULL)  //ÏÈÔöĞÂ£¬ºóÉ¾¾É
+		if (p != NULL)  //å…ˆå¢æ–°ï¼Œååˆ æ—§
 		{
 			int count = p->list->count;
 			List list(p->list);
@@ -280,7 +280,7 @@ public:
 			{
 				int index = list.node[i];
 				char* oldStr = db.get(index, changeField);
-				if (strcmp(changStr, oldStr) != 0) //¼ÇÂ¼µÄ¶ÔÓ¦×Ö¶ÎÒÑ¾­ÊÇchangestr²»´¦Àí,ÏÈÉ¾¾ÉºóÔöĞÂ
+				if (strcmp(changStr, oldStr) != 0) //è®°å½•çš„å¯¹åº”å­—æ®µå·²ç»æ˜¯changesträ¸å¤„ç†,å…ˆåˆ æ—§åå¢æ–°
 				{
 					trie[changeField].Delete(oldStr, index);
 					trie[changeField].Insert(changStr, index);
