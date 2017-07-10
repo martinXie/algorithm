@@ -1,16 +1,18 @@
-#define KEY 9973;
+#define KEY 9973
 #define MAX 10000
-
+class List;
+struct list_node;
 struct tree_node
 {
 	int id;
 	bool isDir;
 	int fileNum;
-	int orgSize; // only work for file
+	int orgSize;
 	int currentSize;
 	tree_node* parent;
 	List* childList;
-	tree_node(int nId, int fileSize) :id(nId),isDir(!fileSize), fileNum(0), orgSize(fileSize), currentSize(fileSize), parent(0), childList(0) {};
+	tree_node(int nId, int fileSize, tree_node* p) :id(nId), isDir(!fileSize), orgSize(fileSize), currentSize(fileSize), parent(p), childList(0)
+	{ fileNum = (fileSize == 0) ? 0 : 1; };
 	tree_node() {};
 };
 struct list_node
@@ -19,6 +21,7 @@ struct list_node
 	list_node* next;
 	list_node(tree_node*p) :treeNode(p), next(0) {};
 };
+
 class List
 {
 public:
@@ -28,7 +31,16 @@ public:
 		tail = head;
 		count = 0;
 	};
-	~List(void) { delete head; head = tail = 0; };
+	~List(void) 
+	{ 
+		list_node* current = head;
+		while (current != 0)
+		{
+			list_node* p = current->next;
+			delete current;
+			current = p;	
+		}
+	};
 	void add(tree_node* data)
 	{
 		list_node* node = new list_node(data);
@@ -47,9 +59,10 @@ public:
 		}
 		if (current != 0)
 		{
-			if (current == tail)
+			if (tail == current)
 			{
-				delete tail;
+				delete current;
+				prev->next = 0;
 				tail = prev;
 			}
 			else
@@ -60,7 +73,6 @@ public:
 			}
 			count--;
 		}
-
 	};
 	tree_node* get(int id)
 	{
@@ -80,9 +92,14 @@ public:
 	}
 	tree_node* at(int n)
 	{
-		if (n < count)
+		list_node* p = head->next;
+		while (p != 0 && n != 0)
 		{
-			list_node* p = head + (n+1);
+			p = p->next;
+			n--;
+		}
+		if (p != 0)
+		{
 			return p->treeNode;
 		}
 		return 0;
@@ -96,36 +113,56 @@ public:
 class HashTable
 {
 public:
+	HashTable()
+	{
+		for (int i = 0; i < MAX; i++)
+		{
+			db[i] = 0;
+		};
+	}
+	~HashTable()
+	{ 
+		for (int i = 0; i < MAX; i++)
+		{
+			if (db[i] != 0 )
+			{
+				delete db[i];
+			}
+		}
+	};
 	void SaveData(tree_node*p)
 	{
 		int index = hash(p->id);
-		List* list = db[index];
-		if (list == 0)
+		if (db[index] == 0)
 		{
-			list = new List;
+			db[index] = new List;
 		}
-		list->add(p);
+		db[index]->add(p);
+
 	}
 	tree_node* GetData(int id)
 	{
 		int index = hash(id);
-		List* p = db[index];
-		if (p == 0)
+		if (db[index] == 0)
 		{
 			return 0;
 		}
-		return p->get(id);
+		return db[index]->get(id);
 
 	};
 	void RemoveData(int id)
 	{
 		int index = hash(id);
-		List* p = db[index];
-		if (p == 0)
+		if (db[index] == 0)
 		{
 			return;
 		}
-		p->remove(p->get(id));
+		db[index]->remove(db[index]->get(id));
+		if (db[index]->size() == 0)
+		{
+			delete db[index];
+			db[index] = 0;
+		}
 	}
 	int hash(int id)
 	{
@@ -137,35 +174,46 @@ public:
 class Tree
 {
 public:
-	Tree() {};
-	~Tree() {};
+	Tree()
+	{ 
+		table = new HashTable;  
+		Add(10000, 0, 0); 
+	};
+	~Tree()
+	{
+		tree_node* root = table->GetData(10000);
+		Free(root);
+		delete root;
+		delete table;
+	};
 	int Add(int id, int pid, int fileSize)
 	{
-		tree_node* p = new tree_node(id, fileSize);
 		tree_node* parent = table->GetData(pid);
+		tree_node* p = new tree_node(id, fileSize, parent);
+		int size = 0;
 		if (parent != 0)
 		{
 			if (parent->childList == 0)
 			{
-				parent->childList == new List;
+				parent->childList = new List;
 			}
 			parent->childList->add(p);
 			if (fileSize != 0)
 			{
-				UpdateParentSize(parent, fileSize, 1);
+				UpdateParentInfo(parent, fileSize, fileSize, 1);
 			}
+			size = parent->currentSize;
 		}
 		table->SaveData(p);
-		return parent->currentSize;
+		return size;
 	};
 	int Move(int id, int pid)
 	{
 		tree_node* p = table->GetData(id);
-		int size = p->currentSize;
 		if (p->parent != 0 && p->parent->childList != 0)
 		{
 			p->parent->childList->remove(p);
-			UpdateParentSize(p->parent, -size, -(p->fileNum));
+			UpdateParentInfo(p->parent, -(p->orgSize), -(p->currentSize), -(p->fileNum));
 		}
 		tree_node* newParent = table->GetData(pid);
 		if (newParent != 0)
@@ -175,7 +223,8 @@ public:
 				newParent->childList = new List;
 			}
 			newParent->childList->add(p);
-			UpdateParentSize(newParent, size, p->fileNum);
+			p->parent = newParent;
+			UpdateParentInfo(p->parent, p->orgSize, p->currentSize, p->fileNum);
 		}
 		return newParent->currentSize;
 	};
@@ -186,81 +235,134 @@ public:
 		if (p != 0 && p->parent != 0)
 		{
 			p->parent->childList->remove(p);
-			UpdateParentSize(p->parent, -size, -(p->fileNum));
+			UpdateParentInfo(p->parent, -(p->orgSize), -(p->currentSize), -(p->fileNum));
 		}
 		ClearTableData(p); //删除数据索引
-		Free(p);// 删除数据
+		Free(p);
 		return size;
 	}
 	int Infect(int id)
 	{
-
-	}
-	void Infect(tree_node* p)
-	{
-		while (p != 0)
+		tree_node* p = table->GetData(id);
+		tree_node* root = table->GetData(10000);
+		int increase = 0;
+		if (root->fileNum != 0)
 		{
-
+			increase = root->currentSize / root->fileNum;
 		}
-	}
-	void ClearTableData(tree_node* p)
-	{
-		while (p != 0)
+		if (p != 0)
 		{
-			table->RemoveData(p->id);
+			m_Infect(p, increase);
+		}
+		UpdateParentInfo(p->parent, 0, p->fileNum*increase, 0);
+		return p->currentSize;
+	}
+	int Recover(int id)
+	{
+		tree_node* p = table->GetData(id);
+		int decrease = 0;
+		int size = 0;
+		if (p != 0)
+		{
+			decrease = p->currentSize - p->orgSize;
+			m_Recover(p);
+			size = p->orgSize;
+		}
+		UpdateParentInfo(p->parent, 0,-decrease, 0);
+		return size;
+	}
+	void m_Recover(tree_node* p)
+	{
+		if (p != 0)
+		{
+			p->currentSize = p->orgSize;
 			if (p->childList != 0)
 			{
 				for (int i = 0; i < p->childList->size(); i++)
 				{
-					ClearTableData(p->childList->at(i));
+					m_Recover(p->childList->at(i));
 				}
 			}
 		}
 	}
-	void UpdateParentSize(tree_node* p, int fileSize, int fileNum)
+	void m_Infect(tree_node* p, int increaseSize)
 	{
-		while (p != 0 && p->isDir )
+		if (p != 0)
 		{
-			p->currentSize += fileSize;
+			p->currentSize += (increaseSize * p->fileNum);
+		}
+
+		if (p != 0 && p->isDir == true && p->childList != 0)
+		{
+			for (int i = 0; i < p->childList->size(); i++)
+			{
+				tree_node* tmp = p->childList->at(i);
+				if (tmp != 0)
+				{
+					m_Infect(tmp, increaseSize);
+				}
+			}
+		}
+	}
+	void ClearTableData(tree_node* p)
+	{
+		if (p->id != 10000)
+		{
+			table->RemoveData(p->id);
+		}
+		if (p->childList != 0)
+		{
+			for (int i = 0; i < p->childList->size(); i++)
+			{
+				ClearTableData(p->childList->at(i));
+			}
+		}
+	}
+	void UpdateParentInfo(tree_node* p, int OrgFileSize, int currentFileSize, int fileNum)
+	{
+		while (p != 0 && p->isDir)
+		{
+			p->currentSize += currentFileSize;
+			p->orgSize += OrgFileSize;
 			p->fileNum += fileNum;
 			p = p->parent;
 		}
 	}
 	void Free(tree_node* p)
 	{
-		while (p != 0 && p->childList != 0)
+		if (p != 0 && p->isDir == true && p->childList != 0)
 		{
 			int count = p->childList->size();
 			for (int i = 0; i < count; i++)
 			{
-				if (p->childList->at(i) != 0)
+				tree_node* tmp = p->childList->at(i);
+				if (tmp != 0)
 				{
-					Free(p->childList->at(i));
+					Free(tmp);
 				}
 			}
 		}
 
-		if (p != 0)
+		if (p != 0 && p->id != 10000)
 		{
 			delete p;
 		}
-		
+
 	};
-	
+
 public:
-	tree_node* root;
 	HashTable* table;
 };
+
 Tree* tree = 0;
 
-void inital (void)
+void init(void)
 {
 	if (tree != 0)
 	{
 		delete tree;
 	}
 	tree = new Tree;
-	tree->Add(10000, 0, 0);
 }
 
 int add(int id, int pid, int fileSzie)
@@ -280,10 +382,10 @@ int remove(int id)
 
 int infect(int id)
 {
-
+	return tree->Infect(id);
 }
 
 int recover(int id)
 {
-
+	return tree->Recover(id);
 }
